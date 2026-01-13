@@ -1,27 +1,63 @@
 import { useNavigate } from "react-router-dom";
+import { useState } from "react";
 
 export default function ProductNew() {
   const navigate = useNavigate();
+  const [loading, setLoading] = useState(false);
 
-  function handleSubmit(e) {
+  async function handleSubmit(e) {
     e.preventDefault();
 
     const formData = new FormData(e.currentTarget);
 
     const newProduct = {
-      title: formData.get("title"),
+      title: formData.get("title")?.toString().trim(),
       price: Number(formData.get("price")),
+      description: formData.get("description")?.toString().trim() || "",
       categoryId: Number(formData.get("categoryId")),
-      image: formData.get("image"),
-      description: formData.get("description"),
+      images: [formData.get("image")?.toString().trim()],
     };
 
-    console.log("New product:", newProduct);
+    // Basic client-side checks
+    if (!newProduct.title) {
+      alert("Title is required");
+      return;
+    }
+    if (isNaN(newProduct.price) || newProduct.price <= 0) {
+      alert("Price must be a positive number");
+      return;
+    }
+  
+    if (!newProduct.images[0]) {
+      alert("Image URL is required");
+      return;
+    }
 
-    // Later: POST to API
-    alert("Product submitted (mock)");
+    setLoading(true);
 
-    navigate("/products");
+    try {
+      const response = await fetch("https://api.escuelajs.co/api/v1/products", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(newProduct),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to create product (status ${response.status})`);
+      }
+
+      const data = await response.json();
+      console.log("Created product:", data);
+
+      alert("Successfully saved a new product");
+      navigate("/products");
+    } catch (error) {
+      alert("Saved a new product failed" );
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
@@ -67,11 +103,9 @@ export default function ProductNew() {
             type="number"
             required
             min={1}
-            max={5}
+            max={10}
             className="mt-1 w-full rounded-lg border px-3 py-2"
-            placeholder="1 - 5"
           />
-          <p className="mt-1 text-xs text-slate-500">Allowed values: 1 to 5</p>
         </div>
 
         {/* Image URL */}
@@ -101,9 +135,12 @@ export default function ProductNew() {
         <div className="flex items-center gap-3">
           <button
             type="submit"
-            className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800"
+            disabled={loading}
+            className={`rounded-lg px-4 py-2 text-sm font-medium text-white ${
+              loading ? "bg-slate-500 cursor-not-allowed" : "bg-slate-900 hover:bg-slate-800"
+            }`}
           >
-            Save product
+            {loading ? "Saving..." : "Save product"}
           </button>
 
           <button
